@@ -35,12 +35,13 @@ function execShRetRes(cmd)
 end
 
 nproc = tonumber(execShRetRes("nproc"))
+cpuName = execShRetRes([[lscpu | grep "Model name:" | sed 's/.*:[ ]\+//g']])
 
 function conky_getCpu(width, vals)
   local i = 1
   local cpuP = splitCsv(vals, true)
   local cpu0 = table.remove(cpuP, 1)
-  local out = execShRetRes([[lscpu | grep "Model name:" | sed 's/.*:[ ]\+//g']]) ..
+  local out = cpuName ..
   [[${hwmon 0 temp 1}C]] .. conky_colorPercentage(cpu0) .. [[${alignr}${freq} MHz ]] .. string.format("%3.0f", cpu0) .. [[%
 ${color}${cpugraph cpu0 30}
 Threads
@@ -93,13 +94,14 @@ ${downspeedgraph <ifname> <height>,<width>} ${alignr}${upspeedgraph <ifname> <he
   return out
 end
 
+lan = execShRetRes([[ip link | grep -oPz 'enp.*(?=:)' | head -n 1]])
+wlan = execShRetRes([[ip link | grep -oPz 'wlp.*(?=:)' | head -n 1]])
+
 function conky_net(height, width)
-  local lan = execShRetRes([[ip link | grep -oPz 'enp.*(?=:)' | head -n 1]])
   local res = ""
   if lan ~= '' then
     res = getNet(lan, height, width) .. "\n\n"
   end
-  local wlan = execShRetRes([[ip link | grep -oPz 'wlp.*(?=:)' | head -n 1]])
   if wlan ~= '' then
     res = res .. getNet(wlan, height, width)
   end
