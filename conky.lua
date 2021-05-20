@@ -119,21 +119,21 @@ d = 1 / 1024
 function conky_gpuInfo()
   local result = execShRetRes([[ \
     nvidia-smi \
-      --query-gpu=memory.used,memory.total,utilization.gpu,clocks.sm,temperature.gpu \
+      --query-gpu=gpu_name,memory.used,memory.total,utilization.gpu,clocks.sm,temperature.gpu \
       --format=csv,nounits,noheader]])
   local tab = splitCsv(result)
-  if tonumber(tab[1]) == nil then
+  if tab[1] == nil then
     return ''
   end
-  local used = tonumber(tab[1]) * d
-  local total = tonumber(tab[2]) * d
+  local used = tonumber(tab[2]) * d
+  local total = tonumber(tab[3]) * d
   local perc = used / total * 100
-  gpuUtil = tab[3]
+  gpuUtil = tab[4]
   gpuMem = perc
-  local ostr = string.format([[NVIDIA ${exec nvidia-smi --query-gpu="name" --format=csv,nounits,noheader}
+  local ostr = string.format([[NVIDIA %s
 %iC ${alignr}%iMHz %3i%%
 ${lua_graph conky_retGpuUtil 30}
 GPU RAM ${alignr}%0.2fGiB / %0.2fGiB %3i%%
-${lua_graph conky_retGpuMem 30}]], tab[5], tab[4], tab[3], used, total, perc)
+${lua_graph conky_retGpuMem 30}]], tab[1], tab[6], tab[5], tab[4], used, total, perc)
   return ostr
 end
