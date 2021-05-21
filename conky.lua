@@ -1,10 +1,15 @@
+local heightBar = 0
+local heightGraph = 0
+local widthBarThread = 0
+local widthGraphNet = 0
+
 function conky_format(format, number)
   return string.format(format, conky_parse(number))
 end
 
-function splitCsv(vals, conky)
+function splitCsv(vals, fromConky)
   local tab = {}
-  if conky then
+  if fromConky then
     vals = conky_parse(vals)
   end
   for s in string.gmatch(vals, "[^,]+") do
@@ -34,16 +39,25 @@ function execShRetRes(cmd)
   return res
 end
 
+function conky_setSizes(newHeightBar, newHeightGraph, newWidthBarThread, newWidthGraphNet)
+  heightBar = conky_parse(newHeightBar)
+  heightGraph = conky_parse(newHeightGraph)
+  widthBarThread = conky_parse(newWidthBarThread)
+  widthGraphNet = conky_parse(newWidthGraphNet)
+  return ""
+end
+
 nproc = tonumber(execShRetRes("nproc"))
 cpuName = execShRetRes([[lscpu | grep "Model name:" | sed 's/.*:[ ]\+//g']])
 
-function conky_getCpu(width, vals)
+function conky_getCpu(vals)
   local i = 1
   local cpuP = splitCsv(vals, true)
   local cpu0 = table.remove(cpuP, 1)
+  -- /sys/class/hwmon/hwmon*
   local out = cpuName ..
   [[${hwmon 0 temp 1}C]] .. conky_colorPercentage(cpu0) .. [[${alignr}${freq} MHz ]] .. string.format("%3.0f", cpu0) .. [[%
-${color}${cpugraph cpu0 30}
+${color}${cpugraph cpu0 ]] .. heightGraph .. [[}
 Threads
 ]]
   while i < nproc do
@@ -56,7 +70,7 @@ Threads
     end
     out = out .. string.format([[${color}%02i-%02i: ]], i, to)
     for j = i, to, 1 do
-      out = out .. string.format("%s${cpubar cpu%i 5,%i} %3.0f%% ", conky_colorPercentage(cpuP[j]), j, width, cpuP[j])
+      out = out .. string.format("%s${cpubar cpu%i %i,%i} %3.0f%% ", conky_colorPercentage(cpuP[j]), j, heightBar, widthBarThread, cpuP[j])
     end
     out = out .. [[${color}
 ]]
@@ -67,43 +81,36 @@ Threads
 end
 
 -- inception style lua_parse call to take cpu values and minimize lua_parses in conky
-function conky_inceptionGetCpu(width)
-  local width = width or 26
-  out = "${lua_parse getCpu " .. width .. " "
+function conky_inceptionGetCpu()
+  out = "${lua_parse getCpu "
   for i = 0, nproc, 1 do
-    out = out .. string.format([[${cpu cpu%i}]], i )
+    out = out .. string.format("${cpu cpu%i}", i)
     if i ~= nproc then
       out = out .. ","
     end
   end
-  out = out .. [[}]]
+  out = out .. "}"
   return out
 end
 
 
-function getNet(name, height, width)
-  height = height or 30
-  width = width or 150
+function getNet(name)
   local out = [[<ifname>: ${addr <ifname>}
 ▼ ${downspeed <ifname>} ${alignr}▲ ${upspeed <ifname>}
 ${downspeedgraph <ifname> <height>,<width>} ${alignr}${upspeedgraph <ifname> <height>,<width>}
 ∑ ${totaldown <ifname>} ${alignr}∑ ${totalup <ifname>}]]
   out = string.gsub(out, "<ifname>", name)
-  out = string.gsub(out, "<height>", height)
-  out = string.gsub(out, "<width>", width)
+  out = string.gsub(out, "<height>", heightGraph)
+  out = string.gsub(out, "<width>", widthGraphNet)
   return out
 end
 
-lan = execShRetRes([[ip link | grep -oPz 'enp.*(?=:)' | head -n 1]])
-wlan = execShRetRes([[ip link | grep -oPz 'wlp.*(?=:)' | head -n 1]])
+nets = splitCsv(execShRetRes([[ip link | grep -oPz '(?<=: )(enp|wlp).*(?=:)' | tr '\0' ',']]))
 
-function conky_net(height, width)
+function conky_net()
   local res = ""
-  if lan ~= '' then
-    res = getNet(lan, height, width) .. "\n\n"
-  end
-  if wlan ~= '' then
-    res = res .. getNet(wlan, height, width)
+  for _, n in pairs(nets) do
+    res = res .. getNet(n) .. "\n\n"
   end
   return res
 end
@@ -127,15 +134,16 @@ function conky_gpuInfo()
   if tab[1] == nil then
     return ''
   end
-  local used = tonumber(tab[2]) * d
-  local total = tonumber(tab[3]) * d
-  local perc = used / total * 100
+  local memUsed = tonumber(tab[2]) * d
+  local memTotal = tonumber(tab[3]) * d
+  local memPerc = memUsed / memTotal * 100
   gpuUtil = tab[4]
-  gpuMem = perc
+  gpuMem = memPerc
   local ostr = string.format([[NVIDIA %s
 %iC ${alignr}%iMHz %3i%%
-${lua_graph conky_retGpuUtil 30}
+${lua_graph conky_retGpuUtil <height>}
 GPU RAM ${alignr}%0.2fGiB / %0.2fGiB %3i%%
-${lua_graph conky_retGpuMem 30}]], tab[1], tab[6], tab[5], tab[4], used, total, perc)
+${lua_graph conky_retGpuMem <height>}]], tab[1], tab[6], tab[5], tab[4], memUsed, memTotal, memPerc)
+  ostr = string.gsub(ostr, "<height>", heightGraph)
   return ostr
 end
