@@ -27,7 +27,7 @@ p = 1 / 100
 -- keep conky beginning for other usecases
 function conky_colorPercentage(percentage)
   local perc = conky_parse(percentage) * p
-  local calc = 255 - perc * 255
+  local calc = math.floor(255 - perc * 255)
   return string.format("${color " .. yellow .. "}", calc, calc, calc)
 end
 
@@ -105,7 +105,7 @@ ${downspeedgraph <ifname> <height>,<width>} ${alignr}${upspeedgraph <ifname> <he
   return out
 end
 
-nets = splitCsv(execShRetRes([[ip link | grep -oPz '(?<=: )(enp|wlp).*(?=:)' | tr '\0' ',']]))
+nets = splitCsv(execShRetRes([[ip link | grep -oPz '(?<=: )(enp|wlp|usb).*(?=:)' | tr '\0' ',']]))
 
 function conky_net()
   local res = ""
