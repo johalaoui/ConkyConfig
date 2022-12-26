@@ -70,7 +70,7 @@ Threads
     end
     out = out .. string.format([[${color}%02i-%02i: ]], i, to)
     for j = i, to, 1 do
-      out = out .. string.format("%s${cpubar cpu%i %i,%i} %3.0f%% ", conky_colorPercentage(cpuP[j]), j, heightBar, widthBarThread, cpuP[j])
+      out = out .. string.format("%s${cpubar cpu%i %i,%f} %3.0f%% ", conky_colorPercentage(cpuP[j]), j, heightBar, widthBarThread, cpuP[j])
     end
     out = out .. [[${color}
 ]]
@@ -142,7 +142,7 @@ function conky_gpuInfo()
   local ostr = string.format([[NVIDIA %s
 %iC ${alignr}%iMHz %3i%%
 ${lua_graph conky_retGpuUtil <height>}
-GPU RAM ${alignr}%0.2fGiB / %0.2fGiB %3i%%
+GPU RAM ${alignr}%0.2fGiB / %0.2fGiB %3.0f%%
 ${lua_graph conky_retGpuMem <height>}]], tab[1], tab[6], tab[5], tab[4], memUsed, memTotal, memPerc)
   ostr = string.gsub(ostr, "<height>", heightGraph)
   return ostr
