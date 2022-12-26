@@ -50,49 +50,39 @@ end
 nproc = tonumber(execShRetRes("nproc"))
 cpuName = execShRetRes([[lscpu | grep "Model name:" | sed 's/.*:[ ]\+//g']])
 
-function conky_getCpu(vals)
-  local i = 1
-  local cpuP = splitCsv(vals, true)
-  local cpu0 = table.remove(cpuP, 1)
+function getCpuValues()
+  local i = 0
+  local parse_cpus = ""
+  for i = 1, nproc, 1 do
+    parse_cpus = parse_cpus .. string.format("${cpu cpu%i},", i)
+  end
+  parse_cpus = parse_cpus .. "${cpu cpu0}"
+  return conky_parse(parse_cpus)
+end
+
+function conky_getCpu()
+  local i = 0
+  local cpuP = splitCsv(getCpuValues(), true)
+  local cpu0 = cpuP[nproc + 1]
   -- /sys/class/hwmon/hwmon*
   local out = cpuName ..
   [[${hwmon 0 temp 1}C]] .. conky_colorPercentage(cpu0) .. [[${alignr}${freq} MHz ]] .. string.format("%3.0f", cpu0) .. [[%
 ${color}${cpugraph cpu0 ]] .. heightGraph .. [[}
 Threads
 ]]
-  while i < nproc do
-    local to = 0
+  for i = 1, nproc, 4 do
+    local to = math.min(i + 3, nproc)
     local title = true
-    if i + 3 <= nproc then
-      to = i + 3
-    else
-      to = nproc
-    end
     out = out .. string.format([[${color}%02i-%02i: ]], i, to)
     for j = i, to, 1 do
       out = out .. string.format("%s${cpubar cpu%i %i,%f} %3.0f%% ", conky_colorPercentage(cpuP[j]), j, heightBar, widthBarThread, cpuP[j])
     end
     out = out .. [[${color}
 ]]
-    i = i + 4
   end
   out = string.gsub(out, ".$", "")
   return out
 end
-
--- inception style lua_parse call to take cpu values and minimize lua_parses in conky
-function conky_inceptionGetCpu()
-  out = "${lua_parse getCpu "
-  for i = 0, nproc, 1 do
-    out = out .. string.format("${cpu cpu%i}", i)
-    if i ~= nproc then
-      out = out .. ","
-    end
-  end
-  out = out .. "}"
-  return out
-end
-
 
 function getNet(name)
   local out = [[<ifname>: ${addr <ifname>}
