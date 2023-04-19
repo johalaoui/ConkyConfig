@@ -2,6 +2,7 @@ local heightBar = 0
 local heightGraph = 0
 local widthBarThread = 0
 local widthGraphNet = 0
+local hwmonNameCpu = ''
 
 function conky_format(format, number)
   return string.format(format, conky_parse(number))
@@ -39,11 +40,15 @@ function execShRetRes(cmd)
   return res
 end
 
-function conky_setSizes(newHeightBar, newHeightGraph, newWidthBarThread, newWidthGraphNet)
+function conky_setSettings(newHeightBar, newHeightGraph, newWidthBarThread, newWidthGraphNet, newHwmonNameCpu)
+  -- sizes
   heightBar = conky_parse(newHeightBar)
   heightGraph = conky_parse(newHeightGraph)
   widthBarThread = conky_parse(newWidthBarThread)
   widthGraphNet = conky_parse(newWidthGraphNet)
+  
+  -- hwmon
+  hwmonNameCpu = newHwmonNameCpu
   return ""
 end
 
@@ -66,7 +71,7 @@ function conky_getCpu()
   local cpu0 = cpuP[nproc + 1]
   -- /sys/class/hwmon/hwmon*
   local out = cpuName ..
-  [[${hwmon 0 temp 1}C]] .. conky_colorPercentage(cpu0) .. [[${alignr}${freq} MHz ]] .. string.format("%3.0f", cpu0) .. [[%
+  [[${hwmon ]] .. hwmonNameCpu .. [[ temp 1}C]] .. conky_colorPercentage(cpu0) .. [[${alignr}${freq} MHz ]] .. string.format("%3.0f", cpu0) .. [[%
 ${color}${cpugraph cpu0 ]] .. heightGraph .. [[}
 Threads
 ]]
